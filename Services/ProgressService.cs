@@ -15,32 +15,27 @@ public static class ProgressService
 
     public static int GetStreak(Habit habit)
     {
-        var today = DateTime.Today;
-        if (today < habit.StartDate)
-            return 0;
-
-        int streak = 0;
-        var currentDate = today;
-
-        while (currentDate >= habit.StartDate)
-        {
-            if (habit.FailedDays.Any(d => d.Date == currentDate.Date))
-                break;
-            
-            streak++;
-            currentDate = currentDate.AddDays(-1);
-        }
-
-        return streak;
+        return GetTotalDays(habit);
     }
 
     public static double GetPercent(Habit habit)
     {
-        int streak = GetStreak(habit);
-        if (habit.GoalDays == 0)
+        var start = habit.StartDate.Date;
+        var end = habit.EndDate.Date;
+        var today = DateTime.Today;
+
+        if (end <= start)
+            return today >= end ? 100 : 0;
+
+        if (today <= start)
             return 0;
-        
-        return Math.Min(100, (double)streak / habit.GoalDays * 100);
+
+        if (today >= end)
+            return 100;
+
+        var totalDays = (end - start).TotalDays;
+        var elapsedDays = (today - start).TotalDays;
+        return Math.Clamp(elapsedDays / totalDays * 100, 0, 100);
     }
 
     public static string FormatDaysAsMonthsAndDays(int days)

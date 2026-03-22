@@ -16,11 +16,12 @@ public class MainViewModel
         
         if (appData.Habits.Count == 0)
         {
+            var startDate = DateTime.Today.AddDays(-7);
             var defaultHabit = new Habit
             {
                 Name = "Моя привычка",
-                StartDate = DateTime.Today.AddDays(-7),
-                GoalDays = 365
+                StartDate = startDate,
+                EndDate = startDate.AddDays(365)
             };
             appData.Habits.Add(defaultHabit);
             DataService.Save(appData);
