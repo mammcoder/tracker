@@ -14,7 +14,7 @@ public class HabitViewModel
     }
 
     public string Name => _habit.Name;
-    public DateTime StartDate => _habit.StartDate;
+    public DateTime StartDate => _habit.StartDate.ToDateTime(TimeOnly.MinValue);
     public string TotalDays => ProgressService.FormatDaysAsMonthsAndDays(ProgressService.GetTotalDays(_habit));
     public double ProgressPercent => ProgressService.GetPercent(_habit);
 }

@@ -16,7 +16,7 @@ public class MainViewModel
         
         if (appData.Habits.Count == 0)
         {
-            var startDate = DateTime.Today.AddDays(-7);
+            var startDate = DateOnly.FromDateTime(DateTime.Today.AddDays(-7));
             var defaultHabit = new Habit
             {
                 Name = "Моя привычка",

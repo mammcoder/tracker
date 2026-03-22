@@ -3,6 +3,6 @@ namespace HabitTracker.Models;
 public class Habit
 {
     public string Name { get; set; } = string.Empty;
-    public DateTime StartDate { get; set; }
-    public DateTime EndDate { get; set; }
+    public DateOnly StartDate { get; set; }
+    public DateOnly EndDate { get; set; }
 }

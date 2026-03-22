@@ -6,11 +6,11 @@ public static class ProgressService
 {
     public static int GetTotalDays(Habit habit)
     {
-        var today = DateTime.Today;
+        var today = DateOnly.FromDateTime(DateTime.Today);
         if (today < habit.StartDate)
             return 0;
         
-        return (today - habit.StartDate).Days;
+        return today.DayNumber - habit.StartDate.DayNumber;
     }
 
     public static int GetStreak(Habit habit)
@@ -20,9 +20,9 @@ public static class ProgressService
 
     public static double GetPercent(Habit habit)
     {
-        var start = habit.StartDate.Date;
-        var end = habit.EndDate.Date;
-        var today = DateTime.Today;
+        var start = habit.StartDate;
+        var end = habit.EndDate;
+        var today = DateOnly.FromDateTime(DateTime.Today);
 
         if (end <= start)
             return today >= end ? 100 : 0;
@@ -33,8 +33,8 @@ public static class ProgressService
         if (today >= end)
             return 100;
 
-        var totalDays = (end - start).TotalDays;
-        var elapsedDays = (today - start).TotalDays;
+        var totalDays = end.DayNumber - start.DayNumber;
+        var elapsedDays = today.DayNumber - start.DayNumber;
         return Math.Clamp(elapsedDays / totalDays * 100, 0, 100);
     }
 
