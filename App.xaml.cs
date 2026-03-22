@@ -2,8 +2,10 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
+using Microsoft.Win32;
 using System.Windows;
 using System.Windows.Forms;
+using System.Windows.Threading;
 using HabitTracker.Services;
 using HabitTracker.ViewModels;
 using HabitTracker.Views;
@@ -21,6 +23,10 @@ public partial class App : Application
     private ToolStripMenuItem? _themeDarkItem;
     private ToolStripMenuItem? _themeLightItem;
     private ToolStripMenuItem? _themeSystemItem;
+    private DispatcherTimer? _dailyRefreshTimer;
+    private DateTime _lastDailyRefreshDate = DateTime.Today;
+    private bool _resourcesDisposed;
+    private bool _systemEventsSubscribed;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -34,6 +40,7 @@ public partial class App : Application
 
             SetupTrayIcon();
             SetupSettingsWatcher();
+            SetupDailyRefreshTimer();
 
             _mainWindow = new MainWindow();
             _mainWindow.Show();
@@ -171,6 +178,83 @@ public partial class App : Application
         });
     }
 
+    private void SetupDailyRefreshTimer()
+    {
+        _dailyRefreshTimer = new DispatcherTimer
+        {
+            Interval = GetDelayUntilNextDay()
+        };
+        _dailyRefreshTimer.Tick += OnDailyRefreshTick;
+        _dailyRefreshTimer.Start();
+
+        SystemEvents.TimeChanged += OnSystemClockChanged;
+        SystemEvents.PowerModeChanged += OnPowerModeChanged;
+        _systemEventsSubscribed = true;
+    }
+
+    private void OnDailyRefreshTick(object? sender, EventArgs e)
+    {
+        ScheduleNextDailyRefresh();
+        RefreshForCurrentDayIfNeeded();
+    }
+
+    private void RefreshForCurrentDayIfNeeded()
+    {
+        var today = DateTime.Today;
+        if (today == _lastDailyRefreshDate)
+            return;
+
+        _lastDailyRefreshDate = today;
+
+        try
+        {
+            var appData = DataService.Load();
+            if (_mainWindow?.DataContext is MainViewModel vm)
+                vm.Reload(appData);
+        }
+        catch
+        {
+        }
+    }
+
+    private void OnSystemClockChanged(object? sender, EventArgs e)
+    {
+        _ = Dispatcher.InvokeAsync(() =>
+        {
+            ScheduleNextDailyRefresh();
+            RefreshForCurrentDayIfNeeded();
+        });
+    }
+
+    private void OnPowerModeChanged(object? sender, PowerModeChangedEventArgs e)
+    {
+        if (e.Mode != PowerModes.Resume)
+            return;
+
+        _ = Dispatcher.InvokeAsync(() =>
+        {
+            ScheduleNextDailyRefresh();
+            RefreshForCurrentDayIfNeeded();
+        });
+    }
+
+    private void ScheduleNextDailyRefresh()
+    {
+        if (_dailyRefreshTimer == null)
+            return;
+
+        _dailyRefreshTimer.Interval = GetDelayUntilNextDay();
+    }
+
+    private static TimeSpan GetDelayUntilNextDay()
+    {
+        var now = DateTime.Now;
+        var nextMidnight = now.Date.AddDays(1);
+        var delay = nextMidnight - now;
+
+        return delay < TimeSpan.FromSeconds(1) ? TimeSpan.FromSeconds(1) : delay;
+    }
+
     private void ShowMainWindow()
     {
         if (_mainWindow != null)
@@ -183,15 +267,41 @@ public partial class App : Application
 
     private void ExitApplication()
     {
-        _notifyIcon?.Dispose();
-        _settingsWatcher?.Dispose();
+        CleanupResources();
         Shutdown();
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
-        _notifyIcon?.Dispose();
-        _settingsWatcher?.Dispose();
+        CleanupResources();
         base.OnExit(e);
+    }
+
+    private void CleanupResources()
+    {
+        if (_resourcesDisposed)
+            return;
+
+        _resourcesDisposed = true;
+
+        if (_dailyRefreshTimer != null)
+        {
+            _dailyRefreshTimer.Stop();
+            _dailyRefreshTimer.Tick -= OnDailyRefreshTick;
+            _dailyRefreshTimer = null;
+        }
+
+        if (_systemEventsSubscribed)
+        {
+            SystemEvents.TimeChanged -= OnSystemClockChanged;
+            SystemEvents.PowerModeChanged -= OnPowerModeChanged;
+            _systemEventsSubscribed = false;
+        }
+
+        _settingsWatcher?.Dispose();
+        _settingsWatcher = null;
+
+        _notifyIcon?.Dispose();
+        _notifyIcon = null;
     }
 }
