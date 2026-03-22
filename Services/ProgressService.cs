@@ -35,7 +35,7 @@ public static class ProgressService
 
         var totalDays = end.DayNumber - start.DayNumber;
         var elapsedDays = today.DayNumber - start.DayNumber;
-        return Math.Clamp(elapsedDays / totalDays * 100, 0, 100);
+        return Math.Clamp((double)elapsedDays / totalDays * 100, 0, 100);
     }
 
     public static string FormatDaysAsMonthsAndDays(int days)
